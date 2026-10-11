@@ -1,0 +1,169 @@
+openapi: 3.0.3
+info: {title: MediStock - Catalogo, version: 2.0.0}
+security: [{bearerAuth: []}]
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        '200': {description: Tabla propia disponible}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/medications:
+    get:
+      x-required-roles: [ADMIN, INVENTORY, SUPERVISOR, CONSULTATION]
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: Pagina de medicamentos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/Resource'}}
+                  meta:
+                    type: object
+                    required: [page, limit, total, totalPages]
+                    properties:
+                      page: {type: integer, minimum: 1}
+                      limit: {type: integer, minimum: 1, maximum: 100}
+                      total: {type: integer, minimum: 0}
+                      totalPages: {type: integer, minimum: 0}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      x-required-roles: [ADMIN]
+      description: Replay conserva snapshot original, incluso tras mantenimiento.
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, pattern: '^[A-Za-z0-9._:-]{8,128}$'}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Update'}
+      responses:
+        '201': {$ref: '#/components/responses/Creation'}
+        '200': {$ref: '#/components/responses/Creation'}
+        '409': {$ref: '#/components/responses/Error'}
+        '422': {$ref: '#/components/responses/Error'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/medications/{id}:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    get:
+      operationId: readMedicationVersion
+      x-required-roles: [ADMIN, INVENTORY, SUPERVISOR, CONSULTATION]
+      responses:
+        '200': {$ref: '#/components/responses/Medication'}
+        default: {$ref: '#/components/responses/Error'}
+    put:
+      operationId: updateMedication
+      x-required-roles: [ADMIN]
+      description: Reemplazo normalizado; unidad inmutable. UUID y fecha originales conservados. Sin reactivacion.
+      parameters: [{$ref: '#/components/parameters/Match'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Update'}
+      responses:
+        '200': {$ref: '#/components/responses/Medication'}
+        '412': {$ref: '#/components/responses/Error'}
+        '422': {$ref: '#/components/responses/Error'}
+        '428': {$ref: '#/components/responses/Error'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/v1/medications/{id}/deactivate:
+    parameters: [{$ref: '#/components/parameters/Id'}]
+    post:
+      operationId: deactivateMedication
+      x-required-roles: [ADMIN]
+      description: Desactivacion sin borrar stock ni historial. Cuerpo ausente o vacio; If-Match vigente obligatorio.
+      parameters: [{$ref: '#/components/parameters/Match'}]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200': {$ref: '#/components/responses/Medication'}
+        '412': {$ref: '#/components/responses/Error'}
+        '428': {$ref: '#/components/responses/Error'}
+        default: {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    Id: {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    Match:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag fuerte obtenido mediante GET. Contador decimal int64 no negativo; no wildcard/lista/weak.
+      schema: {type: string, pattern: '^"(0|[1-9][0-9]{0,18})"$'}
+  responses:
+    Creation:
+      description: Creacion o snapshot idempotente; sin ETag de mantenimiento
+      headers:
+        Location: {schema: {type: string}}
+        X-Correlation-Id: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Resource'}
+    Medication:
+      description: Medicamento y version vigente
+      headers:
+        ETag: {schema: {type: string, pattern: '^"(0|[1-9][0-9]{0,18})"$'}}
+        X-Correlation-Id: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Resource'}
+    Error:
+      description: 400 validacion; 401 autenticacion; 403 permisos; 404 inexistente; 412 version obsoleta; 422 negocio; 428 version ausente; 500/503 fallo
+      headers:
+        X-Correlation-Id: {schema: {type: string}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Update:
+      type: object
+      additionalProperties: false
+      required: [code, name, activeIngredient, pharmaceuticalForm, concentration, unitOfMeasure]
+      description: Se recortan espacios exteriores; limites se aplican despues de normalizar. Code pasa a mayusculas.
+      properties:
+        code: {type: string}
+        name: {type: string}
+        activeIngredient: {type: string}
+        pharmaceuticalForm: {type: string}
+        concentration: {type: string}
+        unitOfMeasure: {type: string}
+    Resource:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, activeIngredient, pharmaceuticalForm, concentration, unitOfMeasure, active, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        code: {type: string, minLength: 1, maxLength: 40, pattern: '^[A-Z0-9-]+$'}
+        name: {type: string, minLength: 1, maxLength: 160}
+        activeIngredient: {type: string, minLength: 1, maxLength: 160}
+        pharmaceuticalForm: {type: string, minLength: 1, maxLength: 80}
+        concentration: {type: string, minLength: 1, maxLength: 80}
+        unitOfMeasure: {type: string, minLength: 1, maxLength: 40}
+        active: {type: boolean}
+        createdAt: {type: string, format: date-time}
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error, message, traceId]
+      properties:
+        error: {type: string}
+        message: {type: string}
+        traceId: {type: string}
+        details:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, message]
+            properties: {field: {type: string}, message: {type: string}}

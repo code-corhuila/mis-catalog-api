@@ -20,3 +20,16 @@ jobs:
           cache: maven
       - name: Verify modules
         run: mvn -B verify
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate OpenAPI
+        run: |
+          python -m pip install PyYAML==6.0.3 openapi-spec-validator==0.9.0
+          python -c 'import yaml; from openapi_spec_validator import validate_spec; validate_spec(yaml.safe_load(open("docs/openapi.yaml", encoding="utf-8")))'
+      - name: Check integration script syntax
+        shell: pwsh
+        run: |
+          $tokens=$null; $errors=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'tests/Test-Integration.ps1'),[ref]$tokens,[ref]$errors)
+          if($errors.Count) { throw ($errors | Out-String) }

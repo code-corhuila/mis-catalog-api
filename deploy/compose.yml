@@ -1,0 +1,22 @@
+services:
+  catalog:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      CATALOG_DB_URL: jdbc:postgresql://postgres:5432/${PG_DATABASE:?PG_DATABASE required}
+      CATALOG_DB_PASSWORD: ${CATALOG_APP_PASSWORD:?CATALOG_APP_PASSWORD required}
+      CATALOG_JWKS_URL: http://security:8080/api/v1/auth/jwks
+    depends_on:
+      catalog-db-migrate:
+        condition: service_completed_successfully
+      security:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 20s
+    networks: [platform]
+    restart: unless-stopped
