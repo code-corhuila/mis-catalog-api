@@ -1,0 +1,4 @@
+services:
+  catalog:
+    ports:
+      - "127.0.0.1:58082:8080"

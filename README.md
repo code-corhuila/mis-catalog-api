@@ -65,3 +65,19 @@ Antes de arrancar, aplicar los cuatro changesets oficiales de mis-catalog-db.
 JWT y method security estan configurados; las pruebas aun no cubren permisos HTTP
 integrados con DB/JWKS reales. No cambia el despliegue activo ni publica un puerto
 Docker en este PR. Decision: [ADR-CAT-SERVER-001](docs/ADR-CAT-SERVER-001.md).
+
+## Contrato y despliegue
+
+[OpenAPI](docs/openapi.yaml) describe las rutas publicadas. `deploy/compose.yml`
+se incluye desde la composicion raiz de infraestructura; no inicia otro motor.
+El override compose.dev expone loopback solo para pruebas, no para QA/main.
+Imagen: `docker build -f deploy/Dockerfile -t mis-catalog-check .`.
+Prueba con PowerShell 7 contra una instancia de prueba ya saludable:
+
+```powershell
+pwsh -NoProfile -File ./tests/Test-Integration.ps1 -BaseUrl '<URL-Catalogo-prueba>' -SecurityUrl '<URL-Seguridad>' -SecurityEnv '<ruta-privada-env-Seguridad>'
+```
+
+La prueba conserva un fixture sintetico; no modifica medicamentos previos ni
+imprime secretos. No usar URLs productivas. No ejecuta migraciones ni arranca
+servicios por si sola. Alcance: [ADR-CAT-DEPLOYMENT-001](docs/ADR-CAT-DEPLOYMENT-001.md).
