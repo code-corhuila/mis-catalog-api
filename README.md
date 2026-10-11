@@ -48,11 +48,20 @@ Estas ultimas no sustituyen pruebas reales de transaccion/concurrencia en Postgr
 La decision de replay, campos inmutables y mantenimiento se publica junto al codigo
 en [ADR-CAT-PERSISTENCE-001](docs/ADR-CAT-PERSISTENCE-001.md).
 
-## Publicacion HTTP (servidor todavia pendiente)
+## Publicacion HTTP
 
 `MedicationApi` y `Errors` publican rutas de medicamentos y traduccion de errores.
 Ocho pruebas MockMvc se suman a las catorce anteriores: `mvn -B verify`.
 El principal y la persistencia estan simulados: no se afirma autorizacion ni DB real.
-JWT, method security, correlacion y JSON estricto se publicaran con `catalog-app`.
-Todavia no hay servidor ejecutable ni puerto expuesto en este clon.
+El PR HTTP no incluia JWT, method security, correlacion ni JSON estricto.
 Contrato y limites: [ADR-CAT-HTTP-001](docs/ADR-CAT-HTTP-001.md).
+
+## Servidor catalog-app
+
+`mvn -B verify` compila/empaqueta el servidor y ejecuta 31 pruebas locales.
+Requiere CATALOG_DB_URL, CATALOG_DB_PASSWORD y CATALOG_JWKS_URL; escucha en 8080.
+Antes de arrancar, aplicar los cuatro changesets oficiales de mis-catalog-db.
+`java -jar catalog-app/target/catalog-app-2.0.0-SNAPSHOT.jar` inicia el servidor.
+JWT y method security estan configurados; las pruebas aun no cubren permisos HTTP
+integrados con DB/JWKS reales. No cambia el despliegue activo ni publica un puerto
+Docker en este PR. Decision: [ADR-CAT-SERVER-001](docs/ADR-CAT-SERVER-001.md).
