@@ -28,7 +28,7 @@ Full policy: `00-governance/branching-policy.md` in `mis-docs`.
 
 Este PR publica `catalog-core`: modelo, validacion y puertos, sin framework en
 el codigo de dominio. El primer PR compilo solo ese modulo.
-Este clon todavia no ofrece una API HTTP ni servidor; se publicaran despues.
+La publicacion inicial no incluia controladores ni servidor.
 
 Con Java 17 y Maven: `mvn -B verify`. CI ejecuta el mismo comando en PR hacia
 develop/qa, con concurrencia cancelable y timeout de 10 minutos. Siete pruebas
@@ -47,3 +47,12 @@ El padre Maven ahora incluye `catalog-adapters` con entidades, repositorios y
 Estas ultimas no sustituyen pruebas reales de transaccion/concurrencia en PostgreSQL.
 La decision de replay, campos inmutables y mantenimiento se publica junto al codigo
 en [ADR-CAT-PERSISTENCE-001](docs/ADR-CAT-PERSISTENCE-001.md).
+
+## Publicacion HTTP (servidor todavia pendiente)
+
+`MedicationApi` y `Errors` publican rutas de medicamentos y traduccion de errores.
+Ocho pruebas MockMvc se suman a las catorce anteriores: `mvn -B verify`.
+El principal y la persistencia estan simulados: no se afirma autorizacion ni DB real.
+JWT, method security, correlacion y JSON estricto se publicaran con `catalog-app`.
+Todavia no hay servidor ejecutable ni puerto expuesto en este clon.
+Contrato y limites: [ADR-CAT-HTTP-001](docs/ADR-CAT-HTTP-001.md).
