@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: mis-catalog
+  datasource:
+    url: ${CATALOG_DB_URL}
+    username: catalog_app
+    password: ${CATALOG_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 2000
+      initialization-fail-timeout: 10000
+      data-source-properties:
+        socketTimeout: 5
+        options: -c statement_timeout=5000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+catalog:
+  jwks-url: ${CATALOG_JWKS_URL}
+server:
+  port: 8080
+  shutdown: graceful
+  tomcat:
+    connection-timeout: 5s
+    keep-alive-timeout: 30s
+logging:
+  structured:
+    format:
+      console: ecs
